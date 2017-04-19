@@ -187,180 +187,181 @@ class Kpparser {
 
 		$new = [];
 
-		foreach($parse as $index => $value){
-			if (preg_match($value, $main_page, $matches)) {
-				if (in_array($index, ['actors_voices','actors_main'])) {
-					if (preg_match_all('#<li itemprop="actors"><a href="/name/(\d+)/">(.*?)</a></li>#si', $matches[1], $matches2, PREG_SET_ORDER)) {
-						$new[$index] = array();
-						foreach ($matches2 as $match) {
-							if (strip_tags($match[2]) != '...') {
-								$tmp = new \StdClass;
-								$tmp->name = strip_tags($match[2]);
-								$tmp->id = $match[1];
+		if($main_page){
+			foreach($parse as $index => $value){
+				if (preg_match($value, $main_page, $matches)) {
+					if (in_array($index, ['actors_voices','actors_main'])) {
+						if (preg_match_all('#<li itemprop="actors"><a href="/name/(\d+)/">(.*?)</a></li>#si', $matches[1], $matches2, PREG_SET_ORDER)) {
+							$new[$index] = array();
+							foreach ($matches2 as $match) {
+								if (strip_tags($match[2]) != '...') {
+									$tmp = new \StdClass;
+									$tmp->name = strip_tags($match[2]);
+									$tmp->id = $match[1];
 
-								$new[$index][] = $tmp;
+									$new[$index][] = $tmp;
+								}
 							}
 						}
-					}
-				} else if (in_array($index, [
-												'director',
-												'script',
-												'producer',
-												'operator',
-												'composer',
-												'painter',
-												'editor'
-											])) {
-					if (preg_match_all('#<a href="/name/(\d+)/">(.*?)</a>#si', $matches[1], $matches2, PREG_SET_ORDER)) {
-						$new[$index] = [];
-						foreach ($matches2 as $match) {
-							if (strip_tags($match[2]) != '...') {
-								$tmp = new \StdClass;
-								$tmp->name = strip_tags($match[2]);
-								$tmp->id = $match[1];
+					} else if (in_array($index, [
+													'director',
+													'script',
+													'producer',
+													'operator',
+													'composer',
+													'painter',
+													'editor'
+												])) {
+						if (preg_match_all('#<a href="/name/(\d+)/">(.*?)</a>#si', $matches[1], $matches2, PREG_SET_ORDER)) {
+							$new[$index] = [];
+							foreach ($matches2 as $match) {
+								if (strip_tags($match[2]) != '...') {
+									$tmp = new \StdClass;
+									$tmp->name = strip_tags($match[2]);
+									$tmp->id = $match[1];
 
-								$new[$index][] = $tmp;
+									$new[$index][] = $tmp;
+								}
 							}
 						}
-					}
-				} else if ($index == 'genre') {
-					if (preg_match_all('#<a href="/lists/.*?/(\d+)/">(.*?)</a>#si',$matches[1], $matches2, PREG_SET_ORDER)) {
-						$new[$index] = [];
-						foreach ($matches2 as $match) {
-							if (strip_tags($match[2]) != '...') {
-								$tmp = new \StdClass;
-								$tmp->title = strip_tags($match[2]);
-								$tmp->id = $match[1];
+					} else if ($index == 'genre') {
+						if (preg_match_all('#<a href="/lists/.*?/(\d+)/">(.*?)</a>#si',$matches[1], $matches2, PREG_SET_ORDER)) {
+							$new[$index] = [];
+							foreach ($matches2 as $match) {
+								if (strip_tags($match[2]) != '...') {
+									$tmp = new \StdClass;
+									$tmp->title = strip_tags($match[2]);
+									$tmp->id = $match[1];
 
-								$new[$index][] = $tmp;
+									$new[$index][] = $tmp;
+								}
 							}
 						}
+					} else if ($index == 'poster_url') {
+						$new[ $index ] = 'https://www.kinopoisk.ru' . $matches[1];
+					} else if(in_array($index, ['budget', 'usa_charges', 'world_charges', 'rus_charges'])) {
+						$tmp = preg_replace('#\\n\s*#si', '', html_entity_decode(strip_tags($matches[1]), ENT_COMPAT | ENT_HTML401, 'UTF-8'));
+						$tmp = str_replace('$', '', $tmp);
+						if (strpos($tmp, '=') !== false) {
+							$tmp = explode('=', $tmp);
+							$tmp = end($tmp);
+						}
+						$tmp = preg_replace('~\x{00a0}~siu',' ', $tmp);
+						$tmp = trim(preg_replace('/\s\s+/', ' ', $tmp));
+						$new[ $index ] = $tmp;
+					} else if ($index == 'rus_premiere' || $index == 'world_premiere' || $index == 'ua_premiere') {
+						$tmp = preg_replace('#\\n\s*#si', '', html_entity_decode(strip_tags($matches[1]), ENT_COMPAT | ENT_HTML401, 'UTF-8'));
+						$tmp = str_replace(' ', '.', $tmp);
+						$tmp = str_replace(array_values($this->months), array_keys($this->months), $tmp);
+						$new[ $index ] = $tmp;
+					} else if ($index == 'age') {
+						$tmp = preg_replace('#\\n\s*#si', '', html_entity_decode(strip_tags($matches[1]), ENT_COMPAT | ENT_HTML401, 'UTF-8'));
+						$tmp = preg_replace('~\x{00a0}~siu',' ', $tmp);
+						$tmp = preg_replace('/\s\s+/', ' ', $tmp);
+						$tmp = str_replace('age', '', trim($tmp));
+						$new[ $index ] = $tmp.'+';
+					} else if ($index == 'time') {
+						$tmp = preg_replace('#\\n\s*#si', '', html_entity_decode(strip_tags($matches[1]), ENT_COMPAT | ENT_HTML401, 'UTF-8'));
+						$tmp = preg_replace('~\x{00a0}~siu',' ', $tmp);
+						$tmp = preg_replace('/\s\s+/', ' ', $tmp);
+						$tmp = explode('/', $tmp);
+						$time = new \StdClass;
+						$time->min   = trim(str_replace(' мин.', '', $tmp[0]));
+						$time->hours = trim(end($tmp));
+						$new[ $index ] = $time;
+					} else if($index == 'trailer_url'){
+						if(preg_match('/getTrailersDomain[\s\S]*?\'(.*)\'/', $main_page, $domains)){
+						$trailer_url = sprintf('https://%s/%s', $domains[1], $matches[1]);
+						$new[$index] = $trailer_url;
+						}
+					} else {
+						$new[ $index ] = preg_replace('#\\n\s*#si', '', html_entity_decode(strip_tags($matches[1]), ENT_COMPAT | ENT_HTML401, 'UTF-8'));
+						$new[ $index ] = $this->result_clear( $new[ $index ], $index );
 					}
-				} else if ($index == 'poster_url') {
-					$new[ $index ] = 'https://www.kinopoisk.ru' . $matches[1];
-				} else if(in_array($index, ['budget', 'usa_charges', 'world_charges', 'rus_charges'])) {
-					$tmp = preg_replace('#\\n\s*#si', '', html_entity_decode(strip_tags($matches[1]), ENT_COMPAT | ENT_HTML401, 'UTF-8'));
-					$tmp = str_replace('$', '', $tmp);
-					if (strpos($tmp, '=') !== false) {
-						$tmp = explode('=', $tmp);
-						$tmp = end($tmp);
-					}
-					$tmp = preg_replace('~\x{00a0}~siu',' ', $tmp);
-					$tmp = trim(preg_replace('/\s\s+/', ' ', $tmp));
-					$new[ $index ] = $tmp;
-				} else if ($index == 'rus_premiere' || $index == 'world_premiere' || $index == 'ua_premiere') {
-					$tmp = preg_replace('#\\n\s*#si', '', html_entity_decode(strip_tags($matches[1]), ENT_COMPAT | ENT_HTML401, 'UTF-8'));
-					$tmp = str_replace(' ', '.', $tmp);
-					$tmp = str_replace(array_values($this->months), array_keys($this->months), $tmp);
-					$new[ $index ] = $tmp;
-				} else if ($index == 'age') {
-					$tmp = preg_replace('#\\n\s*#si', '', html_entity_decode(strip_tags($matches[1]), ENT_COMPAT | ENT_HTML401, 'UTF-8'));
-					$tmp = preg_replace('~\x{00a0}~siu',' ', $tmp);
-					$tmp = preg_replace('/\s\s+/', ' ', $tmp);
-					$tmp = str_replace('age', '', trim($tmp));
-					$new[ $index ] = $tmp.'+';
-				} else if ($index == 'time') {
-					$tmp = preg_replace('#\\n\s*#si', '', html_entity_decode(strip_tags($matches[1]), ENT_COMPAT | ENT_HTML401, 'UTF-8'));
-					$tmp = preg_replace('~\x{00a0}~siu',' ', $tmp);
-					$tmp = preg_replace('/\s\s+/', ' ', $tmp);
-					$tmp = explode('/', $tmp);
-					$time = new \StdClass;
-					$time->min   = trim(str_replace(' мин.', '', $tmp[0]));
-					$time->hours = trim(end($tmp));
-					$new[ $index ] = $time;
-				} else if($index == 'trailer_url'){
-				    if(preg_match('/getTrailersDomain[\s\S]*?\'(.*)\'/', $main_page, $domains)){
-					$trailer_url = sprintf('https://%s/%s', $domains[1], $matches[1]);
-					$new[$index] = $trailer_url;
-				    }
-				} else {
-					$new[ $index ] = preg_replace('#\\n\s*#si', '', html_entity_decode(strip_tags($matches[1]), ENT_COMPAT | ENT_HTML401, 'UTF-8'));
-					$new[ $index ] = $this->result_clear( $new[ $index ], $index );
 				}
 			}
-		}
 
-		$new['poster_url'] = sprintf($this->poster_url, $id);
-		$new['thumb_url'] = sprintf($this->poster_sm_url, $id);
+			$new['poster_url'] = sprintf($this->poster_url, $id);
+			$new['thumb_url'] = sprintf($this->poster_sm_url, $id);
 
-		if($this->parse_trailers) {
-			$trailers_page = $this->getPage(sprintf($this->trailers_url, $id));
-			$trailers_page = iconv('windows-1251' , 'utf-8', $trailers_page);
+			if($this->parse_trailers) {
+				$trailers_page = $this->getPage(sprintf($this->trailers_url, $id));
+				$trailers_page = iconv('windows-1251' , 'utf-8', $trailers_page);
 
-			$trailers_parse = [
-				'url' =>     '#<a href="/getlink\.php[^"]*?link=([^"]*)" class="continue">(.*?)</a>#si',
-				'trailer_page' => '#<a href="([^"]*)" class="all"#si',
-				'html'	=> '#<!-- ролик -->([\w\W]*?)<!-- \/ролик -->#si'
-			];
+				$trailers_parse = [
+					'url' =>     '#<a href="/getlink\.php[^"]*?link=([^"]*)" class="continue">(.*?)</a>#si',
+					'trailer_page' => '#<a href="([^"]*)" class="all"#si',
+					'html'	=> '#<!-- ролик -->([\w\W]*?)<!-- \/ролик -->#si'
+				];
 
-			$url = array();
-			$trailer_page = array();
-			$all_trailers = array();
+				$url = array();
+				$trailer_page = array();
+				$all_trailers = array();
 
-			foreach($trailers_parse as $index => $regex){
-				if ($index == 'html') {
-					if (preg_match_all($regex, $trailers_page, $matches, PREG_SET_ORDER)) {
+				foreach($trailers_parse as $index => $regex){
+					if ($index == 'html') {
+						if (preg_match_all($regex, $trailers_page, $matches, PREG_SET_ORDER)) {
+							foreach ($matches as $match) {
+
+								if (preg_match('#<tr>[\w\W]*?<a href="[^"]*" class="all">(.*?)</a>\s*<table[\w\W]*?</table>[\w\W]*?<tr>[\w\W]*?<table[\w\W]*?</table>[\w\W]*?<tr>[\w\W]*?<table[\w\W]*?</td>\s*<td>([\w\W]*?)</table>[\w\W]*?<td[\w\W]*?<td>([\w\W]*?)</table>#si', $match[1], $title_sd_hd_matches)) { // название, стандартное качество и HD
+									$trailer_family = [];
+									$trailer_family['title'] = $title_sd_hd_matches[1];
+									// SD качество
+									$sd = array();
+									if (preg_match_all('#<a href="/getlink\.php[^"]*?link=([^"]*)" class="continue">(.*?)</a>#si', $title_sd_hd_matches[2], $single_videos, PREG_SET_ORDER)) {
+										foreach ($single_videos as $single_video){
+											$sd[] = [
+												'url' => $single_video[1],
+												'quality' => strip_tags($single_video[2])
+											];
+										}
+									}
+									$trailer_family['sd'] = $sd;
+									// HD качество
+									$hd = array();
+									if (preg_match_all('#<a href="/getlink\.php[^"]*?link=([^"]*)" class="continue">(.*?)</a>#si', $title_sd_hd_matches[3], $single_videos, PREG_SET_ORDER)) {
+										foreach ($single_videos as $single_video) {
+											$hd[] = [
+												'url' => $single_video[1],
+												'quality' => strip_tags($single_video[2])
+											];
+										}
+									}
+									$trailer_family['hd'] = $hd;
+									$all_trailers[] = $trailer_family;
+								}
+
+							}
+						}
+					} else if (preg_match_all($regex,$trailers_page,$matches,PREG_SET_ORDER)) {
 						foreach ($matches as $match) {
-
-							if (preg_match('#<tr>[\w\W]*?<a href="[^"]*" class="all">(.*?)</a>\s*<table[\w\W]*?</table>[\w\W]*?<tr>[\w\W]*?<table[\w\W]*?</table>[\w\W]*?<tr>[\w\W]*?<table[\w\W]*?</td>\s*<td>([\w\W]*?)</table>[\w\W]*?<td[\w\W]*?<td>([\w\W]*?)</table>#si', $match[1], $title_sd_hd_matches)) { // название, стандартное качество и HD
-								$trailer_family = [];
-								$trailer_family['title'] = $title_sd_hd_matches[1];
-								// SD качество
-								$sd = array();
-								if (preg_match_all('#<a href="/getlink\.php[^"]*?link=([^"]*)" class="continue">(.*?)</a>#si', $title_sd_hd_matches[2], $single_videos, PREG_SET_ORDER)) {
-									foreach ($single_videos as $single_video){
-										$sd[] = [
-											'url' => $single_video[1],
-											'quality' => strip_tags($single_video[2])
-										];
-									}
-								}
-								$trailer_family['sd'] = $sd;
-								// HD качество
-								$hd = array();
-								if (preg_match_all('#<a href="/getlink\.php[^"]*?link=([^"]*)" class="continue">(.*?)</a>#si', $title_sd_hd_matches[3], $single_videos, PREG_SET_ORDER)) {
-									foreach ($single_videos as $single_video) {
-										$hd[] = [
-											'url' => $single_video[1],
-											'quality' => strip_tags($single_video[2])
-										];
-									}
-								}
-								$trailer_family['hd'] = $hd;
-								$all_trailers[] = $trailer_family;
-							}
-
+							${$index}[] = $match[1];
 						}
 					}
-				} else if (preg_match_all($regex,$trailers_page,$matches,PREG_SET_ORDER)) {
-					foreach ($matches as $match) {
-						${$index}[] = $match[1];
+				}
+
+				$main_trailer_url = array();
+				if (isset($trailer_page[0])) {
+					$main_trailer_page = $this->getPage('https://www.kinopoisk.ru' . $trailer_page[0]);
+					$main_trailer_page = iconv('windows-1251' , 'utf-8', $main_trailer_page);
+					//file_put_contents('main_trailer_'.$id.'.html', $main_trailer_page );
+
+					if (preg_match_all('#<a href="/getlink\.php[^"]*?link=([^"]*)" class="continue">(.*?)</a>#si',$main_trailer_page,$matches,PREG_SET_ORDER)) {
+						foreach ($matches as $match) {
+							$main_trailer_url[] = array('description'=>strip_tags($match[2]),'url'=>$match[1]);
+						}
 					}
 				}
+
+				$new['trailer_url'] = $main_trailer_url[count($main_trailer_url)-1]['url'];
+				$new['trailers'] = $all_trailers;
 			}
-
-			$main_trailer_url = array();
-			if (isset($trailer_page[0])) {
-				$main_trailer_page = $this->getPage('https://www.kinopoisk.ru' . $trailer_page[0]);
-				$main_trailer_page = iconv('windows-1251' , 'utf-8', $main_trailer_page);
-				//file_put_contents('main_trailer_'.$id.'.html', $main_trailer_page );
-
-				if (preg_match_all('#<a href="/getlink\.php[^"]*?link=([^"]*)" class="continue">(.*?)</a>#si',$main_trailer_page,$matches,PREG_SET_ORDER)) {
-					foreach ($matches as $match) {
-						$main_trailer_url[] = array('description'=>strip_tags($match[2]),'url'=>$match[1]);
-					}
-				}
+		
+			if($this->usecache){
+				$this->setCache($id, json_encode($new));
 			}
-
-			$new['trailer_url'] = $main_trailer_url[count($main_trailer_url)-1]['url'];
-			$new['trailers'] = $all_trailers;
 		}
-
-		$new = json_encode($new);
-		if($this->usecache){
-		    $this->setCache($id, $new);
-		}
-		return json_decode($new);
+		return (object)$new;
 	}
 
 	public function search($title, $year = null, $type = self::MOVIE) {
