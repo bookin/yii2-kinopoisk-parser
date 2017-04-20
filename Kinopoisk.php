@@ -15,6 +15,7 @@ class Kinopoisk
     public static $use_cache = true;
     public static $cache_expire = 3600;
     public static $parse_trailers = false;
+    public static $proxy = false;
 
     public function getFilmData($id) {
         if(empty($id)) {
@@ -59,7 +60,8 @@ class Kinopoisk
                 'usecache' => self::$use_cache,
                 'cache_dir' => self::cacheDir(self::$cache_dir),
                 'cache_expire' => self::$cache_expire,
-                'parse_trailers' => self::$parse_trailers
+                'parse_trailers' => self::$parse_trailers,
+                'proxy'=> self::$proxy,
             ];
 
         $parser =  new Kpparser($options);

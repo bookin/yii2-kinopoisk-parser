@@ -48,6 +48,7 @@ class Kpparser {
     public $cache_expire = 60*60*24*7;
 
     public $parse_trailers = true;
+    public $proxy = false;
 
 
     public function __construct($options) {
@@ -86,6 +87,11 @@ class Kpparser {
                 $this->parse_trailers = (boolean) $options['parse_trailers'];
             }
 
+            if(array_key_exists('proxy', $options)) {
+
+                $this->proxy = $options['proxy'];
+            }
+
         }
 
         if(!$this->login) {
@@ -108,7 +114,7 @@ class Kpparser {
         $this->parser->agent = "Mozilla/5.0 (Windows; U; Windows NT 6.1; uk; rv:1.9.2.13) Gecko/20101203 Firefox/3.6.13 Some plugins";
         $login = $this->parser->submit($this->auth_url, $post_array);
 
-        if(!$login) {
+        if($login) {
             $this->login = true;
         }
     }
@@ -433,6 +439,10 @@ class Kpparser {
         $curl->setOption(CURLOPT_COOKIEFILE, $this->cachedir.DIRECTORY_SEPARATOR.'cookies');
 
         $curl->setOption(CURLOPT_USERAGENT , 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 YaBrowser/17.3.1.840 Yowser/2.5 Safari/537.36');
+
+        if($this->proxy !== false && is_string($this->proxy)){
+            $curl->setOption(CURLOPT_PROXY, $this->proxy);
+        }
 
         $response = $curl->{$type}($url);
 
