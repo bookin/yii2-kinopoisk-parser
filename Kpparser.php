@@ -356,12 +356,12 @@ class Kpparser {
 				$new['trailer_url'] = $main_trailer_url[count($main_trailer_url)-1]['url'];
 				$new['trailers'] = $all_trailers;
 			}
-		
-			if($this->usecache){
-				$this->setCache($id, json_encode($new));
-			}
 		}
-		return (object)$new;
+		$new = json_encode($new);
+        if($this->usecache && $main_page){
+            $this->setCache($id, $new);
+        }
+        return json_decode($new)?:new \stdClass();
 	}
 
 	public function search($title, $year = null, $type = self::MOVIE) {
